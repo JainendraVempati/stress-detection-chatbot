@@ -1,0 +1,24 @@
+# ML Microservice Dependencies
+# Install with: pip install -r ml_requirements.txt
+
+# Core ML Libraries
+tensorflow>=2.13.0
+keras>=2.13.0
+scikit-learn>=1.3.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# NLP & Text Processing
+nltk>=3.8.1
+gensim>=4.3.0
+
+# Model Serialization
+joblib>=1.3.0
+
+# Web Framework
+Flask>=2.3.0
+flask-cors>=4.0.0
+requests>=2.31.0
+
+# Optional: Advanced Features
+python-dotenv>=1.0.0

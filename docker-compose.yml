@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: stress_detection_mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - stress-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Python ML Microservice
+  ml-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    container_name: stress_detection_ml
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: production
+    volumes:
+      - ./:/app
+    depends_on:
+      - mongodb
+    networks:
+      - stress-network
+    healthcheck:
+      test: curl -f http://localhost:5000/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Backend
+  backend:
+    build:
+      context: ./Stress\ Detection/backend
+      dockerfile: Dockerfile
+    container_name: stress_detection_backend
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGO_URI: mongodb://admin:password@mongodb:27017/stress_detection_db?authSource=admin
+      ML_SERVICE_URL: http://ml-service:5000
+      JWT_SECRET: ${JWT_SECRET:-super_secret_key_change_in_production}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_PASSWORD: ${GMAIL_PASSWORD}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
+    networks:
+      - stress-network
+    volumes:
+      - ./Stress\ Detection/backend:/app
+
+  # Frontend (Nginx)
+  frontend:
+    image: nginx:alpine
+    container_name: stress_detection_frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./Stress\ Detection/frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - stress-network
+
+volumes:
+  mongo_data:
+
+networks:
+  stress-network:
+    driver: bridge

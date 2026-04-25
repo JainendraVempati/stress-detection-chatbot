@@ -1,0 +1,55 @@
+// REPLACE the init() function in app.js (around line 100-113)
+// 
+// OLD CODE (DELETE THIS):
+/*
+async function init() {
+  state.currentUser = auth.getCurrentUser();
+  if (state.currentUser) {
+    state.chats = await storage.getChats(state.currentUser.id);
+  }
+
+  const hash = window.location.hash.slice(1) || 'home';
+  handleRouting(hash);
+
+  window.addEventListener('hashchange', () => {
+    const newHash = window.location.hash.slice(1) || 'home';
+    handleRouting(newHash);
+  });
+}
+*/
+
+// NEW CODE (REPLACE WITH THIS):
+async function init() {
+  console.log('Initializing StressBot...');
+  state.currentUser = auth.getCurrentUser();
+  
+  // Only fetch chats if user is logged in
+  if (state.currentUser) {
+    try {
+      state.chats = await storage.getChats(state.currentUser.id);
+      console.log(`Loaded ${state.chats.length} chats for user`);
+    } catch (error) {
+      console.error('Failed to load chats:', error.message);
+      state.chats = [];
+      // If auth token is invalid, clear it
+      if (error.message.includes('User not found') || error.message.includes('Unauthorized')) {
+        console.log('Invalid session, clearing...');
+        auth.logout();
+        state.currentUser = null;
+      }
+    }
+  } else {
+    console.log('No user logged in, showing home page');
+  }
+
+  const hash = window.location.hash.slice(1) || 'home';
+  console.log('Routing to:', hash);
+  handleRouting(hash);
+
+  window.addEventListener('hashchange', () => {
+    const newHash = window.location.hash.slice(1) || 'home';
+    handleRouting(newHash);
+  });
+  
+  console.log('StressBot initialized successfully!');
+}

@@ -1,0 +1,91 @@
+# ============================================
+# Stress Detection System - .gitignore
+# ============================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# ML Models (Large Files - Use Git LFS for production)
+ml_service/*.pkl
+*.h5
+*.pb
+model_weights/
+
+# Jupyter Notebooks Checkpoints
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment Variables
+.env
+.env.local
+.env.production
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules/
+
+# Docker
+docker-compose.override.yml
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+
+# Documentation Build
+docs/_build/
+
+# SQLite
+*.sqlite3
+
+# Test & Debug
+test-*.py
+test-*.js
+.pytest_cache/
+.coverage
+
+data/final_stress_dataset.csv
