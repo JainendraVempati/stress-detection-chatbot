@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(start index.html)",
+      "Bash(curl -s -X POST http://localhost:4000/auth/signup -H \"Content-Type: application/json\" -d \"{\\\\\"name\\\\\":\\\\\"Test\\\\\",\\\\\"email\\\\\":\\\\\"notanemail\\\\\",\\\\\"password\\\\\":\\\\\"pass123\\\\\",\\\\\"confirmPassword\\\\\":\\\\\"pass123\\\\\"}\")",
+      "Bash(curl -s -X POST http://localhost:4000/auth/signup -H \"Content-Type: application/json\" -d \"{\\\\\"name\\\\\":\\\\\"Test\\\\\",\\\\\"email\\\\\":\\\\\"student@kmit.ac.in\\\\\",\\\\\"password\\\\\":\\\\\"pass123\\\\\",\\\\\"confirmPassword\\\\\":\\\\\"pass123\\\\\"}\")",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(node server.js)",
+      "Bash(node *)",
+      "Bash(npm install *)",
+      "WebFetch(domain:build.nvidia.com)",
+      "WebSearch",
+      "Bash(curl -s -X POST https://integrate.api.nvidia.com/v1/models/meta/llama-3.1-70b-instruct/chat/completions -H 'Authorization: Bearer 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' -H 'Content-Type: application/json' -d '{\"messages\":[{\"role\":\"user\",\"content\":\"Say hello in one word\"}],\"max_tokens\":10}')",
+      "Bash(curl -s -X POST https://integrate.api.nvidia.com/v1/chat/completions -H 'Authorization: Bearer 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' -H 'Content-Type: application/json' -d '{\"model\":\"meta/llama-3.1-70b-instruct\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello in one word\"}],\"max_tokens\":10}')",
+      "Bash(npm search *)",
+      "Bash(curl *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Response:', d['choices'][0]['message']['content']\\)\")"
+    ]
+  }
+}
