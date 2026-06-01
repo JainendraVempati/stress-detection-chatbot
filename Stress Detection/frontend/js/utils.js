@@ -1,4 +1,9 @@
-const BASE_URL = 'http://localhost:4000';
+// AUTO-DETECT backend URL:
+// - In production (Render): set window.BACKEND_URL via a <script> tag in index.html / chat.html
+// - In local dev: falls back to localhost:4000
+const BASE_URL = (typeof window !== 'undefined' && window.BACKEND_URL)
+  ? window.BACKEND_URL
+  : 'http://localhost:4000';
 const TOKEN_KEY = 'sdc_token';
 const USER_KEY = 'sdc_user';
 

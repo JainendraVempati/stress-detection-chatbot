@@ -10,6 +10,12 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Chart.js for Analytics Graph -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Backend URL config: set window.BACKEND_URL for production (Render) deployments.
+         In local dev, utils.js falls back to http://localhost:4000 automatically.
+         UPDATE this URL after you deploy the Node.js backend on Render. -->
+    <script>
+      window.BACKEND_URL = 'https://stress-detection-backend.onrender.com';
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         

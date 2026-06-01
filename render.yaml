@@ -1,0 +1,114 @@
+##############################################################################
+# render.yaml — Render Infrastructure-as-Code
+# Stress Detection Chatbot — 3-service deployment
+#
+# Services:
+#   1. stress-ml-service    → Python Flask ML service (port 5000)
+#   2. stress-backend       → Node.js Express backend (port 4000)
+#   3. stress-frontend      → Static HTML/JS frontend site
+#
+# IMPORTANT: After first deploy, update these placeholder values:
+#   - MONGO_URI            → Your MongoDB Atlas connection string
+#   - JWT_SECRET           → Strong random secret (32+ chars)
+#   - GEMINI_API_KEY       → Google AI Studio key
+#   - NVIDIA_API_KEY       → NVIDIA NIM key
+#   - EMAIL_USER / EMAIL_PASS → Gmail + App Password
+#   - ML_SERVICE_URL       → Actual deployed ML service URL
+#   - RENDER_FRONTEND_URL  → Actual deployed frontend URL
+##############################################################################
+
+services:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE 1: Python ML Service (DistilBERT + VADER)
+  # ─────────────────────────────────────────────────────────────────────────
+  - type: web
+    name: stress-ml-service
+    runtime: python
+    region: oregon          # Change to: frankfurt, singapore, ohio as needed
+    plan: standard          # Needs RAM for PyTorch model (~512MB+). Use 'standard' minimum.
+    rootDir: ml_service
+    buildCommand: pip install -r ml_requirements.txt
+    startCommand: python ml_service.py
+    healthCheckPath: /health
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.10.0"
+      - key: PORT
+        value: "5000"
+      # Optional: HuggingFace cache dir (model auto-downloads on first start)
+      - key: TRANSFORMERS_CACHE
+        value: /opt/render/project/.cache/huggingface
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE 2: Node.js Backend (Express + Mongoose)
+  # ─────────────────────────────────────────────────────────────────────────
+  - type: web
+    name: stress-backend
+    runtime: node
+    region: oregon          # MUST match ML service region for low latency
+    plan: starter
+    rootDir: Stress Detection/backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "18.0.0"
+      - key: PORT
+        value: "4000"
+
+      # ── MongoDB Atlas ───────────────────────────────────────────────────
+      - key: MONGO_URI
+        sync: false         # Set manually in Render dashboard (never commit secrets!)
+        # Value example: mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/stress_detection_db?retryWrites=true&w=majority
+
+      # ── Authentication ──────────────────────────────────────────────────
+      - key: JWT_SECRET
+        sync: false         # Set manually in Render dashboard
+        # Value: any strong random string, e.g. openssl rand -hex 32
+
+      # ── AI Services ─────────────────────────────────────────────────────
+      - key: GEMINI_API_KEY
+        sync: false         # Google AI Studio → https://aistudio.google.com/app/apikey
+
+      - key: NVIDIA_API_KEY
+        sync: false         # NVIDIA NIM → https://build.nvidia.com/
+
+      # ── Email (OTP) ─────────────────────────────────────────────────────
+      - key: EMAIL_USER
+        sync: false         # Your Gmail address
+      - key: EMAIL_PASS
+        sync: false         # Gmail App Password (NOT your Gmail password)
+
+      # ── ML Service URL ──────────────────────────────────────────────────
+      - key: ML_SERVICE_URL
+        sync: false         # Set to: https://stress-ml-service.onrender.com
+        # (exact URL shown in Render dashboard after ML service deploys)
+
+      # ── CORS: Frontend URL ───────────────────────────────────────────────
+      - key: RENDER_FRONTEND_URL
+        sync: false         # Set to: https://stress-detection-frontend.onrender.com
+        # (exact URL shown in Render dashboard after frontend deploys)
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE 3: Frontend Static Site
+  # ─────────────────────────────────────────────────────────────────────────
+  - type: web
+    name: stress-frontend
+    runtime: static
+    region: oregon
+    plan: starter
+    rootDir: Stress Detection/frontend
+    # No build command needed — pure static HTML/CSS/JS
+    staticPublishPath: .   # Serve from rootDir itself
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

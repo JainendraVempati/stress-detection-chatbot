@@ -20,7 +20,19 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-app.use(cors());
+// CORS configuration
+// In production (Render), RENDER_FRONTEND_URL env var restricts access to your static site.
+// In local dev, all origins are allowed (fallback to '*').
+const allowedOrigins = process.env.RENDER_FRONTEND_URL
+  ? [process.env.RENDER_FRONTEND_URL, 'http://localhost:4000', 'http://localhost:3000']
+  : true; // allow all origins in local dev
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
