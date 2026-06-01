@@ -352,7 +352,7 @@ router.post('/message', async (req, res) => {
       // Technical message — skip ML, use fixed near-zero stress
       stressScore = 5;
       stressData = {
-        lstm: 0,
+        bert: 0,
         vader: 0,
         combined: 0,
         percentage: 5,
@@ -369,7 +369,7 @@ router.post('/message', async (req, res) => {
       if (mlResult.success) {
         stressScore = Math.round(mlResult.stress_level * 10);
         stressData = {
-          lstm: mlResult.components.lstm,
+          bert: mlResult.components.bert,
           vader: mlResult.components.vader,
           combined: mlResult.components.combined,
           percentage: mlResult.stress_percentage,
@@ -498,7 +498,7 @@ router.get('/predict/:chatId', async (req, res) => {
       stressLevel: mlResult.data.stress_level,
       stressPercentage: mlResult.data.stress_percentage,
       components: {
-        lstm: mlResult.data.lstm_score,
+        bert: mlResult.data.bert_score,
         vader: mlResult.data.vader_score,
         combined: mlResult.data.combined_score,
       },

@@ -1115,9 +1115,9 @@ function renderStressBadge(score, stressData = null) {
   `;
   
   // If we have ML data, add a tooltip
-  if (stressData && stressData.lstm !== undefined) {
+  if (stressData && stressData.bert !== undefined) {
     return `
-      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${stress.getStressBg(score)} cursor-help" title="LSTM: ${(stressData.lstm * 100).toFixed(1)}% | VADER: ${(stressData.vader * 100).toFixed(1)}% | Combined: ${(stressData.combined * 100).toFixed(1)}%">
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${stress.getStressBg(score)} cursor-help" title="DistilBERT: ${(stressData.bert * 100).toFixed(1)}% | VADER: ${(stressData.vader * 100).toFixed(1)}% | Combined: ${(stressData.combined * 100).toFixed(1)}%">
         ${badgeContent}
       </span>
     `;

@@ -8,67 +8,68 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ╔════════════════════════════════════════════════════════════════════════════╗
-║                          CLIENT LAYER (Port 80)                            ║
+║                          CLIENT LAYER (Port 80 / file)                    ║
 ║  ┌──────────────────────────────────────────────────────────────────────┐  ║
-║  │  Frontend (HTML/JS/Tailwind)                                         │  ║
-║  │  - Chatbot UI                                                        │  ║
-║  │  - Authentication Pages                                             │  ║
-║  │  - Stress Level Visualization                                       │  ║
-║  │  - Chat History                                                     │  ║
+║  │  Frontend (HTML/JS/Tailwind CSS)                                     │  ║
+║  │  - index.html  : Login / Signup / OTP verification                  │  ║
+║  │  - chat.html   : Chat interface, stress visualization               │  ║
+║  │  - js/app.js   : Main application logic                             │  ║
+║  │  - js/utils.js : API helpers, token management                      │  ║
 ║  └──────────────────────────────────────────────────────────────────────┘  ║
 ║                                   ↕ HTTP/REST                              ║
 ║  ┌──────────────────────────────────────────────────────────────────────┐  ║
-║  │  Nginx (Reverse Proxy)                                               │  ║
-║  │  - Static file serving                                              │  ║
-║  │  - API routing                                                      │  ║
-║  │  - Load balancing                                                   │  ║
-║  │  - GZIP compression                                                 │  ║
+║  │  Nginx (Reverse Proxy — Docker only)                                 │  ║
+║  │  - Serves static frontend files                                     │  ║
+║  │  - Proxies /auth/ and /chat/ to backend:4000                        │  ║
+║  │  - Proxies /ml/ to ml-service:5000                                  │  ║
+║  │  - GZIP compression, static asset caching                           │  ║
 ║  └──────────────────────────────────────────────────────────────────────┘  ║
 ╚════════════════════════════════════════════════════════════════════════════╝
                                     ↕
 ┌─────────────────────────────────────────────────────────────────────────────┐
 ║                   API GATEWAY LAYER (Port 4000)                             ║
 ║  ╔════════════════════════════════════════════════════════════════════╗   ║
-║  ║  Express.js Backend Server                                        ║   ║
+║  ║  Node.js + Express Backend                                        ║   ║
 ║  ║  ┌──────────────────────────────────────────────────────────────┐ ║   ║
 ║  ║  │  Authentication Routes (/auth)                              │ ║   ║
-║  ║  │  - POST /register      (Email, Password)                    │ ║   ║
-║  ║  │  - POST /login         (Email/OTP, Password)                │ ║   ║
-║  ║  │  - POST /send-otp      (OTP Generation)                     │ ║   ║
-║  ║  │  - POST /verify-otp    (OTP Verification)                   │ ║   ║
-║  ║  │  - Middleware: JWT Authentication                           │ ║   ║
+║  ║  │  - POST /signup          OTP email + pending user           │ ║   ║
+║  ║  │  - POST /verify-signup-otp  Complete registration           │ ║   ║
+║  ║  │  - POST /login           JWT token issuance                 │ ║   ║
+║  ║  │  - POST /google          Google login (auto-register)       │ ║   ║
+║  ║  │  - POST /send-otp        OTP for existing users             │ ║   ║
+║  ║  │  - POST /verify-otp      OTP login                          │ ║   ║
 ║  ║  └──────────────────────────────────────────────────────────────┘ ║   ║
 ║  ║                              ↕                                     ║   ║
 ║  ║  ┌──────────────────────────────────────────────────────────────┐ ║   ║
-║  ║  │  Chat Routes (/chat) - ML-ENHANCED                          │ ║   ║
-║  ║  │  - POST /new                  (Create chat)                 │ ║   ║
-║  ║  │  - POST /message              (Send message + Get response) │ ║   ║
-║  ║  │  - GET /predict/:chatId       (Stress prediction only)      │ ║   ║
-║  ║  │  - POST /batch-predict        (Batch predictions)           │ ║   ║
-║  ║  │  - GET /all                   (List all chats)              │ ║   ║
-║  ║  │  - GET /:chatId               (Get chat details)            │ ║   ║
-║  ║  │  - PATCH /:chatId             (Update chat name)            │ ║   ║
-║  ║  │  - DELETE /:chatId            (Delete chat)                 │ ║   ║
+║  ║  │  Chat Routes (/chat) — ML-ENHANCED                          │ ║   ║
+║  ║  │  - POST /new                 Create chat                    │ ║   ║
+║  ║  │  - POST /message             Send message + get response    │ ║   ║
+║  ║  │  - GET  /all                 List all user chats            │ ║   ║
+║  ║  │  - GET  /:chatId             Get single chat                │ ║   ║
+║  ║  │  - PATCH /:chatId            Rename chat                    │ ║   ║
+║  ║  │  - DELETE /:chatId           Delete chat                    │ ║   ║
+║  ║  │  - GET  /predict/:chatId     Standalone stress prediction   │ ║   ║
+║  ║  │  - POST /batch-predict       Batch stress prediction        │ ║   ║
+║  ║  │  - GET  /analytics/:userId   Stress trend analytics         │ ║   ║
 ║  ║  └──────────────────────────────────────────────────────────────┘ ║   ║
-║  ║          ↓ HTTP/REST (Axios)                                     ║   ║
+║  ║          ↓ Axios HTTP                                            ║   ║
 ║  ║  ┌──────────────────────────────────────────────────────────────┐ ║   ║
-║  ║  │  Request to ML Service                                       │ ║   ║
-║  ║  │  - Forwards user text to ML endpoint                         │ ║   ║
-║  ║  │  - Receives stress data + LLM response                       │ ║   ║
-║  ║  │  - Stores in MongoDB with predictions                        │ ║   ║
+║  ║  │  LLM Chain (chat_integrated.js)                              │ ║   ║
+║  ║  │  ① callGemini()   — Gemini 2.0 Flash (PRIMARY, ~1-3s)      │ ║   ║
+║  ║  │     └── if fails → ② callNvidiaLLM() (FALLBACK, ~5-20s)   │ ║   ║
+║  ║  │           └── if fails → ③ generateBotResponse() (offline) │ ║   ║
 ║  ║  └──────────────────────────────────────────────────────────────┘ ║   ║
 ║  ╚════════════════════════════════════════════════════════════════════╝   ║
 ║                                                                            ║
 ║  ╔════════════════════════════════════════════════════════════════════╗   ║
 ║  ║  MongoDB Database                                                 ║   ║
 ║  ║  Collections:                                                     ║   ║
-║  ║  - users (id, email, password_hash, createdAt)                   ║   ║
-║  ║  - chats (id, userId, chatName, messages[], avgStress, model)   ║   ║
-║  ║  Message Structure:                                              ║   ║
-║  ║  {                                                               ║   ║
-║  ║    text, stress, role, timestamp,                               ║   ║
-║  ║    stressData: {lstm, vader, combined, percentage}              ║   ║
-║  ║  }                                                               ║   ║
+║  ║    users { _id, name, email, password (bcrypt), createdAt }      ║   ║
+║  ║    chats { _id, userId, chatName, messages[], avgStress }        ║   ║
+║  ║  Message document:                                               ║   ║
+║  ║    { text, originalText, translatedText, language,              ║   ║
+║  ║      stress (0-100), stressData {bert_score, vader_score,       ║   ║
+║  ║      combined, percentage}, category, role, timestamp }         ║   ║
 ║  ╚════════════════════════════════════════════════════════════════════╝   ║
 └─────────────────────────────────────────────────────────────────────────────┘
                                     ↕
@@ -76,85 +77,66 @@
 ║                 ML MICROSERVICE LAYER (Port 5000)                           ║
 ║  ╔════════════════════════════════════════════════════════════════════╗   ║
 ║  ║  Flask Python Application                                         ║   ║
-║  ║  ┌──────────────────────────────────────────────────────────────┐ ║   ║
-║  ║  │  Health Check                                               │ ║   ║
-║  ║  │  - GET /health  (Service status check)                      │ ║   ║
-║  ║  └──────────────────────────────────────────────────────────────┘ ║   ║
-║  ║  ┌──────────────────────────────────────────────────────────────┐ ║   ║
-║  ║  │  Prediction Endpoints                                       │ ║   ║
-║  ║  │  - POST /predict       (Single text prediction)             │ ║   ║
-║  ║  │  - POST /chat          (Prediction + LLM response)          │ ║   ║
-║  ║  │  - POST /batch-predict (Multiple texts)                     │ ║   ║
-║  ║  └──────────────────────────────────────────────────────────────┘ ║   ║
-║  ║          ↓ Model Processing                                      ║   ║
+║  ║  Endpoints:                                                       ║   ║
+║  ║    GET  /health          Service status check                    ║   ║
+║  ║    POST /predict         Single text stress prediction            ║   ║
+║  ║    POST /chat            Prediction + NVIDIA NIM LLM response    ║   ║
+║  ║    POST /batch-predict   Multiple texts prediction               ║   ║
+║  ║                                                                   ║   ║
 ║  ║  ┌──────────────────────────────────────────────────────────────┐ ║   ║
 ║  ║  │  HYBRID STRESS DETECTION ENGINE                              │ ║   ║
 ║  ║  │                                                              │ ║   ║
 ║  ║  │  1. TEXT CLEANING                                           │ ║   ║
-║  ║  │     text.lower() → remove extra spaces → trim()            │ ║   ║
+║  ║  │     lower() → remove extra whitespace → strip()            │ ║   ║
 ║  ║  │                                                              │ ║   ║
-║  ║  │  2. TOKENIZATION                                            │ ║   ║
-║  ║  │     Load: tokenizer.pkl (trained on dataset)                │ ║   ║
-║  ║  │     Convert text → integer sequences                        │ ║   ║
+║  ║  │  2. DISTILBERT TOKENIZATION                                 │ ║   ║
+║  ║  │     tokenizer.pkl (DistilBERT tokenizer, pickled)           │ ║   ║
+║  ║  │     max_length=128, padding=max_length, truncation=True     │ ║   ║
+║  ║  │     Returns: input_ids, attention_mask tensors              │ ║   ║
 ║  ║  │                                                              │ ║   ║
-║  ║  │  3. PADDING                                                 │ ║   ║
-║  ║  │     Pad sequences to MAX_LEN = 80                          │ ║   ║
-║  ║  │                                                              │ ║   ║
-║  ║  │  4. LSTM PREDICTION (75% weight)                            │ ║   ║
-║  ║  │     Model: stress_lstm_model.keras                         │ ║   ║
+║  ║  │  3. DISTILBERT INFERENCE (75% weight)                       │ ║   ║
+║  ║  │     Model: stress_model.pt (DistilBERT-base-uncased)        │ ║   ║
 ║  ║  │     Architecture:                                           │ ║   ║
-║  ║  │       - Embedding(256)                                      │ ║   ║
-║  ║  │       - LSTM(128) + Dropout(0.3)                           │ ║   ║
-║  ║  │       - LSTM(64) + Dropout(0.3)                            │ ║   ║
-║  ║  │       - Dense(64) + Dropout(0.3)                           │ ║   ║
-║  ║  │       - Dense(32) + Dropout(0.2)                           │ ║   ║
-║  ║  │       - Dense(1, sigmoid) → 0-1                            │ ║   ║
-║  ║  │     Output: LSTM_Probability [0-1]                         │ ║   ║
+║  ║  │       - DistilBERT 6-layer transformer                      │ ║   ║
+║  ║  │       - CLS token pooling (index 0)                         │ ║   ║
+║  ║  │       - Dropout(0.3)                                        │ ║   ║
+║  ║  │       - Linear(768 → 256) + ReLU                            │ ║   ║
+║  ║  │       - Linear(256 → 1) → sigmoid → bert_prob [0-1]        │ ║   ║
+║  ║  │     Device: CPU (no GPU required)                           │ ║   ║
 ║  ║  │                                                              │ ║   ║
-║  ║  │  5. VADER SENTIMENT (25% weight)                            │ ║   ║
+║  ║  │  4. VADER SENTIMENT (25% weight)                            │ ║   ║
 ║  ║  │     Library: nltk.sentiment.SentimentIntensityAnalyzer      │ ║   ║
 ║  ║  │     Output: compound [-1, +1]                              │ ║   ║
-║  ║  │     Convert: (1 - compound) / 2 → [0-1]                    │ ║   ║
+║  ║  │     Conversion: vader_stress = max(0.0, -compound)         │ ║   ║
+║  ║  │     (neutral/positive → 0 stress, negative → stress)       │ ║   ║
 ║  ║  │                                                              │ ║   ║
-║  ║  │  6. HYBRID SCORE CALCULATION                                │ ║   ║
-║  ║  │     stress_score = 0.75×LSTM + 0.25×VADER                   │ ║   ║
-║  ║  │     Converts to 1-10 scale:                                 │ ║   ║
-║  ║  │     stress_level = 1 + (stress_score × 9)                  │ ║   ║
-║  ║  │                                                              │ ║   ║
+║  ║  │  5. HYBRID SCORE CALCULATION                                │ ║   ║
+║  ║  │     stress_score = 0.75×bert_prob + 0.25×vader_stress       │ ║   ║
+║  ║  │     stress_level = 1 + (stress_score × 9)  → [1.0, 10.0]  │ ║   ║
+║  ║  │     stress_pct   = bert_prob × 100          → [0, 100]     │ ║   ║
 ║  ║  └──────────────────────────────────────────────────────────────┘ ║   ║
-║  ║          ↓ LLM Response Generation (if text != "")              ║   ║
-║  ║  ┌──────────────────────────────────────────────────────────────┐ ║   ║
-║  ║  │  LM STUDIO INTEGRATION                                       │ ║   ║
-║  ║  │  - Connects to localhost:1234 (LM Studio)                   │ ║   ║
-║  ║  │  - Model: phi-3-mini                                        │ ║   ║
-║  ║  │  - Generates contextual responses                           │ ║   ║
-║  ║  │  - Includes stress level context                            │ ║   ║
-║  ║  │  - Temperature: 0.4 (stable outputs)                        │ ║   ║
-║  ║  │  - Max tokens: 200                                          │ ║   ║
-║  ║  │  - Gracefully handles if LM Studio unavailable              │ ║   ║
-║  ║  └──────────────────────────────────────────────────────────────┘ ║   ║
-║  ║          ↑ Fallback                                             ║   ║
-║  ║  ┌──────────────────────────────────────────────────────────────┐ ║   ║
-║  ║  │  LM STUDIO (External)                                        │ ║   ║
-║  ║  │  Port: 1234                                                 │ ║   ║
-║  ║  │  Endpoint: /v1/chat/completions                             │ ║   ║
-║  ║  │  (Download from: https://lmstudio.ai/)                      │ ║   ║
-║  ║  └──────────────────────────────────────────────────────────────┘ ║   ║
-║  ║          ↑ Optional (graceful fallback)                          ║   ║
 ║  ║                                                                   ║   ║
-║  ║  Response JSON:                                                  ║   ║
-║  ║  {                                                               ║   ║
-║  ║    "success": true,                                              ║   ║
-║  ║    "stress_level": 7.5,                    (1-10 scale)         ║   ║
-║  ║    "stress_percentage": 75.0,              (0-100%)             ║   ║
-║  ║    "components": {                                               ║   ║
-║  ║      "lstm": 0.750,                        (individual scores)  ║   ║
-║  ║      "vader": 0.625,                                            ║   ║
-║  ║      "combined": 0.724                                          ║   ║
-║  ║    },                                                            ║   ║
-║  ║    "bot_response": "..."                   (LLM response)       ║   ║
-║  ║  }                                                               ║   ║
+║  ║  NVIDIA NIM (inside ml_service.py — used only by /chat)          ║   ║
+║  ║    Model: meta/llama-3.1-70b-instruct (configurable via env)    ║   ║
+║  ║    Used as fallback LLM within the Python service.              ║   ║
+║  ║    Node.js backend has its own primary LLM chain (Gemini first).║   ║
 ║  ╚════════════════════════════════════════════════════════════════════╝   ║
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↕
+┌─────────────────────────────────────────────────────────────────────────────┐
+║                 EXTERNAL LLM APIs                                           ║
+║  ┌──────────────────────────────────────────────────────────────────────┐  ║
+║  │  ① Google Gemini 2.0 Flash (PRIMARY)                                │  ║
+║  │     URL: https://generativelanguage.googleapis.com/v1beta/models/  │  ║
+║  │     Free tier: 15 req/min, 1500 req/day per key                    │  ║
+║  │     Response: ~1-3 seconds                                         │  ║
+║  └──────────────────────────────────────────────────────────────────────┘  ║
+║  ┌──────────────────────────────────────────────────────────────────────┐  ║
+║  │  ② NVIDIA NIM — Llama 3.1 70B (FALLBACK)                           │  ║
+║  │     URL: https://integrate.api.nvidia.com/v1/chat/completions      │  ║
+║  │     Paid API — used when Gemini is unavailable                     │  ║
+║  │     Response: ~5-20 seconds                                        │  ║
+║  └──────────────────────────────────────────────────────────────────────┘  ║
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -162,131 +144,101 @@
 
 ## 📊 Data Flow Diagram
 
-### User Message Flow:
+### User Message Flow (complete)
 ```
-User Types Message
+User types a message
         ↓
-Frontend (JS) POST /chat/message
+Frontend (JS) → POST /chat/message  {chatId, text}
         ↓
 Backend (Express)
-        ├─ Validates JWT token
-        ├─ Finds chat in MongoDB
-        └─ Calls ML Service
-                ↓
-        ML Service (/chat endpoint)
-        ├─ Cleans text
-        ├─ Tokenizes
-        ├─ Pads sequences
-        ├─ LSTM prediction
-        ├─ VADER sentiment
-        ├─ Calculates hybrid score
-        ├─ Calls LM Studio (optional)
-        └─ Returns {stress_level, response}
-                ↓
-        Backend
-        ├─ Stores message in MongoDB
-        ├─ Calculates average stress
-        └─ Returns to Frontend
-                ↓
-Frontend Displays:
-- Stress Level (1-10)
-- Stress Percentage
-- Component breakdown
-- Bot Response
+  ├─ JWT verification (authMiddleware)
+  ├─ detectLanguage(text)           → e.g. 'te' (Telugu)
+  ├─ translateToEnglish(text, 'te') → English text for ML
+  ├─ classifyMessage(englishText)   → 'emotional' or 'technical'
+  │
+  ├─ if TECHNICAL:
+  │      stressScore = 5  (fixed, ML skipped)
+  │
+  └─ if EMOTIONAL:
+         → POST ml-service:5000/chat {text: englishContextText}
+         ← {stress_level, stress_percentage, components{bert_score, vader, combined}}
+         stressScore = round(stress_level × 10)
+         ↓
+  callLLM(englishText, stressScore, category, contextMsgs)
+    ├─ try callGemini()    → {text, source:'gemini'}
+    ├─ try callNvidiaLLM() → {text, source:'nvidia'}
+    └─ generateBotResponse() → {text, source:'fallback'}
+         ↓
+  translateFromEnglish(botText, 'te')  → Telugu response
+         ↓
+  MongoDB.save({userMessage, botMessage, stressData})
+         ↓
+Frontend displays:
+  - Stress gauge (0–100%)
+  - Stress level (1–10)
+  - Bot response (in user's language)
+  - Per-component breakdown (bert, vader, combined)
 ```
 
 ---
 
-## 🔄 Component Interactions
+## 🔄 Multilingual Translation Chain
 
-### 1. **Frontend ↔ Backend Communication**
 ```
-Request Headers:
-- Authorization: Bearer {JWT_TOKEN}
-- Content-Type: application/json
-
-Response Headers:
-- Access-Control-Allow-Origin: *
-- Content-Type: application/json
-```
-
-### 2. **Backend ↔ ML Service Communication**
-```
-Request: POST http://localhost:5000/chat
-{
-  "text": "user message"
-}
-
-Response:
-{
-  "success": true,
-  "stress_level": X.X,
-  "stress_percentage": X.X,
-  "components": {...},
-  "bot_response": "..."
-}
+User message (any language)
+        ↓
+detectLanguage()    — langdetect library + English word guard
+  → returns ISO 639-1 code (e.g. 'te', 'hi', 'ta', 'en')
+        ↓
+if NOT English:
+  translateToEnglish()
+    ├─ MyMemory API (primary, free, no key needed)
+    └─ @vitalets/google-translate-api (fallback)
+        ↓
+[ML analysis + LLM response happen in English]
+        ↓
+if NOT English:
+  translateFromEnglish()
+    ├─ MyMemory API (primary)
+    └─ Google Translate (fallback)
+        ↓
+User sees response in their language
 ```
 
-### 3. **ML Service ↔ LM Studio Communication** (Optional)
-```
-Request: POST http://localhost:1234/v1/chat/completions
-{
-  "model": "phi-3-mini",
-  "messages": [{"role": "user", "content": "..."}],
-  "temperature": 0.4,
-  "max_tokens": 200
-}
-
-Response:
-{
-  "choices": [{"message": {"content": "..."}}]
-}
-```
+**Supported languages**: English, Telugu, Hindi, Tamil, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia, French, German, Spanish, Arabic, Chinese, Japanese, Korean (and more via auto-detection)
 
 ---
 
-## 📦 Deployment Architecture
+## 📦 Deployment Architecture (Docker)
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│              Docker Container Orchestration                │
+│              Docker Compose Orchestration                  │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │  Container: stress_detection_frontend              │  │
-│  │  Image: nginx:alpine                               │  │
-│  │  Port: 80                                           │  │
-│  │  Volume: ./frontend → /usr/share/nginx/html        │  │
-│  └─────────────────────────────────────────────────────┘  │
+│  stress_detection_frontend (nginx:alpine)                 │
+│    Port: 80 → /usr/share/nginx/html                       │
+│    Routes: /auth/* /chat/* → backend:4000                  │
+│            /ml/* → ml-service:5000                         │
 │                                                            │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │  Container: stress_detection_backend               │  │
-│  │  Image: node:18-alpine                             │  │
-│  │  Port: 4000                                         │  │
-│  │  Depends: mongodb, ml-service                       │  │
-│  │  Health: HTTP health check                          │  │
-│  └─────────────────────────────────────────────────────┘  │
+│  stress_detection_backend (node:18-alpine)                │
+│    Port: 4000                                              │
+│    Depends: ml-service (healthy)                           │
+│    Env: MONGO_URI (Atlas URI), JWT_SECRET,                 │
+│         GEMINI_API_KEY, NVIDIA_API_KEY, EMAIL_*            │
+│    DB: Connects to MongoDB Atlas cloud cluster             │
 │                                                            │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │  Container: stress_detection_ml                    │  │
-│  │  Image: python:3.10-slim                           │  │
-│  │  Port: 5000                                         │  │
-│  │  Depends: mongodb                                  │  │
-│  │  Health: HTTP health check                          │  │
-│  │  Volumes: Model files mounted                       │  │
-│  └─────────────────────────────────────────────────────┘  │
+│  stress_detection_ml (python:3.10-slim)                   │
+│    Port: 5000                                              │
+│    Start period: 300s (DistilBERT model load)             │
+│    Env: NVIDIA_API_KEY, NVIDIA_MODEL                       │
 │                                                            │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │  Container: stress_detection_mongodb               │  │
-│  │  Image: mongo:7                                     │  │
-│  │  Port: 27017                                        │  │
-│  │  Volume: mongo_data persistent volume               │  │
-│  │  Authentication: admin/password                     │  │
-│  └─────────────────────────────────────────────────────┘  │
+│  ── MongoDB: MongoDB Atlas (external cloud service) ──    │
+│    No local container — backend connects via MONGO_URI     │
+│    Provider: MongoDB Atlas (cloud.mongodb.com)             │
+│    Free M0 tier available                                  │
 │                                                            │
 │  Network: stress-network (bridge)                         │
-│  All containers communicate via service names             │
-│                                                            │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -295,92 +247,72 @@ Response:
 ## 🔐 Security Layers
 
 ```
-┌──────────────────────────────────────────────────┐
-│  Frontend (Client)                               │
-│  - HTTPS only (in production)                    │
-│  - JWT token stored in localStorage/sessionStorage│
-│  - CORS validation                               │
-└──────────────────────────────────────────────────┘
-                     ↓
-┌──────────────────────────────────────────────────┐
-│  Nginx Reverse Proxy                             │
-│  - Rate limiting                                 │
-│  - DDoS protection                               │
-│  - SSL/TLS termination                           │
-│  - Request filtering                             │
-└──────────────────────────────────────────────────┘
-                     ↓
-┌──────────────────────────────────────────────────┐
-│  Backend (Express)                               │
-│  - JWT verification middleware                   │
-│  - Input validation & sanitization               │
-│  - CORS configuration                            │
-│  - Error handling                                │
-│  - Secure headers                                │
-└──────────────────────────────────────────────────┘
-                     ↓
-┌──────────────────────────────────────────────────┐
-│  Database (MongoDB)                              │
-│  - Authentication required                       │
-│  - Password hashing (bcryptjs)                  │
-│  - Encrypted connections                         │
-│  - Access control                                │
-└──────────────────────────────────────────────────┘
+Frontend
+  - HTTPS only (production — Nginx TLS termination)
+  - JWT stored in localStorage
+  - No API keys in frontend code
+
+Nginx (Docker)
+  - Reverse proxy hides backend ports
+  - Static file serving
+  - Rate limiting (configurable)
+
+Backend (Express)
+  - JWT verification on all /chat/* routes
+  - bcrypt password hashing (10 rounds)
+  - Input validation via Mongoose schema
+  - CORS configured
+
+MongoDB Atlas (Cloud)
+  - Authentication via Atlas database user credentials
+  - Connection via TLS-encrypted mongodb+srv:// URI
+  - Data persisted in Atlas cloud (managed backups available)
+  - IP whitelist controls access (set 0.0.0.0/0 for Render deployment)
 ```
 
 ---
 
 ## 📈 Performance Metrics
 
-### Expected Response Times:
-- **Frontend Load**: < 2 seconds
-- **Authentication**: 100-500ms
-- **Single Prediction**: 50-200ms
-- **Chat Response (with LLM)**: 2-5 seconds
-- **Batch Prediction (10 texts)**: 500-1000ms
+| Operation                  | Time         | Notes                           |
+|----------------------------|--------------|---------------------------------|
+| Authentication             | 100–300ms    | bcrypt + JWT                    |
+| Language detection         | < 5ms        | langdetect library              |
+| Translation (MyMemory)     | 200–800ms    | Network call                    |
+| DistilBERT prediction      | 200–800ms    | CPU inference                   |
+| Chat (Gemini 2.0 Flash)    | 1–3s total   | ML + API call                   |
+| Chat (NVIDIA NIM)          | 5–20s total  | ML + API call                   |
+| Chat (offline fallback)    | ~300ms       | ML only, no API call            |
+| Batch prediction (10 items)| 1–3s         | Sequential CPU inference        |
 
-### Resource Usage:
-- **Backend Container**: ~200MB RAM
-- **ML Service Container**: ~800MB RAM (model loaded)
-- **MongoDB**: Variable (depends on data)
-- **Frontend**: < 5MB
-
----
-
-## 🚀 Scaling Strategy
-
-```
-Single Node Deployment
-        ↓
-Load Balancer + Multiple Backend Instances
-        ↓
-Backend → MongoDB Replica Set
-        ↓
-ML Service Scaling:
-- Horizontal: Multiple ML containers
-- Vertical: GPU acceleration
-- Caching: Redis for frequent predictions
-        ↓
-CDN for Static Assets
-```
+### Docker Container Resources
+| Container   | RAM     | Notes                              |
+|-------------|---------|------------------------------------|
+| ML Service  | ~700 MB | DistilBERT model in memory         |
+| Backend     | ~200 MB | Node.js + Express                  |
+| MongoDB     | Cloud   | MongoDB Atlas (external, no local container) |
+| Nginx       | ~10 MB  | Minimal                            |
 
 ---
 
 ## 📋 Integration Checklist
 
-- ✅ ML Models (LSTM + VADER) integrated
-- ✅ Flask microservice created
-- ✅ Backend routes updated with ML calls
-- ✅ MongoDB schema updated for predictions
-- ✅ Docker setup with compose
+- ✅ ML Models (DistilBERT + VADER) integrated
+- ✅ Flask microservice — /predict, /chat, /batch-predict, /health
+- ✅ Backend LLM chain — Gemini → NVIDIA → offline fallback
+- ✅ Multilingual support — 10+ languages via MyMemory + Google Translate
+- ✅ Message classification — emotional vs technical routing
+- ✅ MongoDB schema updated for DistilBERT + translation fields
+- ✅ MongoDB Atlas cloud database (no local MongoDB container)
+- ✅ Docker Compose with health checks (3 container orchestration: ml-service, backend, frontend)
 - ✅ Nginx reverse proxy configured
-- ✅ Documentation complete
-- ✅ API endpoints documented
+- ✅ JWT authentication + OTP email verification
+- ✅ Full documentation updated
 - ⏳ End-to-end testing (manual required)
-- ⏳ Production deployment
+- ⏳ Production deployment (Render / Railway / VPS)
 
 ---
 
-**Architecture Version**: 1.0  
-**Last Updated**: April 2024  
-**Status**: ✅ Integration Complete & Ready for Testing
+**Architecture Version**: 3.0
+**Last Updated**: June 2026
+**Key Change from v2**: LSTM replaced by DistilBERT; LM Studio replaced by Gemini/NVIDIA cloud APIs

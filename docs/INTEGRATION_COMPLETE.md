@@ -1,3 +1,6 @@
+> **⚠️ HISTORICAL DOCUMENT**: This file documents the v2.0 migration (LSTM + LM Studio era). The current system (v3.0) uses DistilBERT + Gemini/NVIDIA APIs. See README.md and INTEGRATION_GUIDE.md for current documentation.
+---
+
 # 🎉 Integration Complete - Stress Detection Chatbot v2.0
 
 ## ✅ What Has Been Done
@@ -178,7 +181,7 @@ Expected:
   "data": {
     "stress_level": 7.2,
     "stress_percentage": 72.5,
-    "lstm_score": 0.75,
+    "bert_score": 0.75,
     "vader_score": 0.68
   }
 }

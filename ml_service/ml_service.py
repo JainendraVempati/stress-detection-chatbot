@@ -258,7 +258,7 @@ def predict_stress(text):
         return {
             "stress_level": stress_level,
             "stress_percentage": stress_percentage,
-            "bert_score": round(bert_prob, 3),       # renamed from lstm_score
+            "bert_score": round(bert_prob, 3),
             "vader_score": round(vader_stress, 3),
             "combined_score": round(stress_score, 3),
             "has_stress_keywords": has_stress,
@@ -438,9 +438,7 @@ def chat():
             "stress_level": stress_data['stress_level'],
             "stress_percentage": stress_data['stress_percentage'],
             "components": {
-                # Keep key as 'lstm' for backwards compatibility with Node.js
-                # (chat_integrated.js reads stressData.lstm — renaming would break it)
-                "lstm": stress_data['bert_score'],     # DistilBERT score (replaces LSTM)
+                "bert": stress_data['bert_score'],     # DistilBERT score
                 "vader": stress_data['vader_score'],
                 "combined": stress_data['combined_score'],
                 "has_stress_keywords": stress_data.get('has_stress_keywords', False),

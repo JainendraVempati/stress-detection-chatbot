@@ -31,8 +31,23 @@ env/
 ENV/
 .venv
 
-# ML Models (Large Files - Use Git LFS for production)
-ml_service/*.pkl
+# ─────────────────────────────────────────────────────
+# ML Model Files
+# stress_model.pt (254 MB) and tokenizer.pkl are LARGE.
+# Use Git LFS to track them, or exclude them from Git
+# and share them via Google Drive / cloud storage.
+#
+# To include via Git LFS, run:
+#   git lfs install
+#   git lfs track "ml_service/stress_model.pt"
+#   git lfs track "ml_service/tokenizer.pkl"
+# ─────────────────────────────────────────────────────
+ml_service/stress_model.pt
+ml_service/tokenizer.pkl
+
+# Old LSTM model files (replaced by DistilBERT)
+ml_service/model.pkl
+ml_service/sequence_config.pkl
 *.h5
 *.pb
 model_weights/
@@ -52,7 +67,7 @@ model_weights/
 Thumbs.db
 desktop.ini
 
-# Environment Variables
+# Environment Variables — NEVER commit real secrets
 .env
 .env.local
 .env.production
@@ -88,4 +103,8 @@ test-*.js
 .pytest_cache/
 .coverage
 
+# Dataset (large CSV — share separately)
 data/final_stress_dataset.csv
+
+# Claude AI settings (local only)
+.claude/

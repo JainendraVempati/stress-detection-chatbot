@@ -1,3 +1,6 @@
+> **⚠️ HISTORICAL DOCUMENT**: This file documents the v2.0 migration (LSTM + LM Studio era). The current system (v3.0) uses DistilBERT + Gemini/NVIDIA APIs. See README.md and INTEGRATION_GUIDE.md for current documentation.
+---
+
 # 🔍 Connection Diagnostic Report
 
 ## Date: April 24, 2026

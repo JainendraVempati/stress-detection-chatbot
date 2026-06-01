@@ -31,10 +31,10 @@ const messageSchema = new mongoose.Schema({
   },
   // Enhanced ML stress data (optional)
   stressData: {
-    lstm: { type: Number },
-    vader: { type: Number },
-    combined: { type: Number },
-    percentage: { type: Number },
+    bert: { type: Number },      // DistilBERT score (0-1)
+    vader: { type: Number },     // VADER sentiment score (0-1)
+    combined: { type: Number },  // Hybrid score (0-1)
+    percentage: { type: Number },// Stress percentage (0-100)
   },
   // Message category: emotional (stress scored) or technical (low stress)
   category: {

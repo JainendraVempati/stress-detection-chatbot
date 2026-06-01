@@ -1,16 +1,19 @@
-# Stress Detection System - Integration Guide
+# Stress Detection System — Integration Guide (v3.0)
+
+> **Note**: This document describes the current v3.0 architecture.
+> For historical migration notes, see `INTEGRATION_COMPLETE.md` and `INTEGRATION_SUMMARY.md`.
 
 ## 📋 Project Overview
 
-This is a **full-stack stress detection chatbot** with integrated machine learning capabilities. It combines:
+A full-stack stress detection chatbot with integrated ML capabilities:
 
-- **Frontend**: HTML/JavaScript chatbot UI
-- **Backend**: Node.js/Express REST API + MongoDB
-- **ML Microservice**: Python Flask service with LSTM + VADER + LLM
+- **Frontend**: HTML/JavaScript/Tailwind CSS chatbot UI
+- **Backend**: Node.js/Express REST API + MongoDB (LLM chain: Gemini → NVIDIA → fallback)
+- **ML Microservice**: Python Flask + DistilBERT (fine-tuned) + VADER
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture (v3.0)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -21,67 +24,61 @@ This is a **full-stack stress detection chatbot** with integrated machine learni
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │          Backend (Node.js/Express + MongoDB)                │
-│  - Authentication (JWT, OAuth, Email OTP)                  │
-│  - Chat Management                                          │
-│  - API Gateway to ML Service                                │
+│  - Authentication (JWT, OTP Email)                         │
+│  - Chat Management + Analytics                             │
+│  - LLM Chain: Gemini 2.0 Flash → NVIDIA NIM → fallback    │
+│  - Multilingual: MyMemory + Google Translate               │
 └──────────────────────────┬──────────────────────────────────┘
                            │ HTTP/REST API
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │       ML Microservice (Python Flask)                        │
-│  - LSTM Neural Network (Stress Detection)                  │
-│  - VADER Sentiment Analysis                                 │
-│  - LLM Integration (LM Studio)                             │
-│  - Model Management                                         │
+│  - DistilBERT (fine-tuned) — 75% weight                    │
+│  - VADER Sentiment Analysis — 25% weight                   │
+│  - Hybrid score: stress_level (1-10) + percentage (0-100%) │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**Key changes from v2.0**:
+- LSTM (TensorFlow) → DistilBERT (PyTorch + HuggingFace Transformers)
+- LM Studio (local) → Gemini 2.0 Flash + NVIDIA NIM (cloud APIs)
+- No LM Studio installation required
+
 ---
 
-## 📁 File Structure
+## 📁 Current File Structure
 
 ```
-Project/
-├── LLM_Integration.ipynb          # LLM + Stress Prediction Notebook
-├── LSTM_Training.ipynb             # Model Training Notebook
-├── final_stress_dataset.csv        # Training Dataset
-├── tokenizer.pkl                   # Trained Tokenizer
-├── sequence_config.pkl             # Sequence Configuration
-├── model.pkl                        # Trained LSTM Model
-├── ml_service.py                   # ML Microservice (NEW)
-├── ml_requirements.txt             # Python Dependencies (NEW)
+project-root/
+├── Stress Detection/
+│   ├── backend/
+│   │   ├── routes/chat_integrated.js  # Main chat handler + LLM chain
+│   │   ├── utils/stressModel.js       # Message classifier + offline fallback
+│   │   ├── utils/translator.js        # Multilingual support
+│   │   ├── utils/mailer.js            # Gmail SMTP OTP
+│   │   ├── .env.example               # Environment template
+│   │   └── server.js
+│   └── frontend/
+│       ├── index.html
+│       ├── chat.html
+│       └── js/{app.js, utils.js}
 │
-└── Stress Detection/
-    ├── backend/
-    │   ├── server.js               # Express Server
-    │   ├── package.json            # Node Dependencies (UPDATED)
-    │   ├── .env                    # Environment Variables
-    │   ├── models/
-    │   │   ├── User.js
-    │   │   └── Chat.js
-    │   ├── routes/
-    │   │   ├── auth.js
-    │   │   ├── chat.js             # Original (simple)
-    │   │   └── chat_integrated.js  # NEW (ML-enhanced)
-    │   ├── middleware/
-    │   │   └── authMiddleware.js
-    │   └── utils/
-    │       ├── mailer.js
-    │       ├── otp.js
-    │       └── stressModel.js      # Simple Keyword-Based
-    │
-    └── frontend/
-        ├── index.html              # Main UI
-        └── js/
-            ├── app.js              # Main Logic
-            └── utils.js            # Utilities
+├── ml_service/
+│   ├── ml_service.py           # Flask + DistilBERT + VADER + NVIDIA NIM
+│   ├── ml_requirements.txt     # Python deps (torch, transformers, flask, etc.)
+│   ├── stress_model.pt         # Fine-tuned DistilBERT weights (~254 MB)
+│   └── tokenizer.pkl           # DistilBERT tokenizer
+│
+├── docker-compose.yml          # 5-container orchestration
+├── Dockerfile.ml               # Python ML service container
+└── nginx.conf                  # Reverse proxy
 ```
 
 ---
 
 ## 🚀 Setup Instructions
 
-### 1️⃣ Install Dependencies
+### 1. Install Dependencies
 
 #### Backend (Node.js)
 ```bash
@@ -91,268 +88,102 @@ npm install
 
 #### ML Microservice (Python)
 ```bash
-# Create Python virtual environment (recommended)
-python -m venv ml_env
-ml_env\Scripts\activate
+cd ml_service
+python -m venv ml_env          # recommended
+source ml_env/bin/activate     # Linux/Mac
+# ml_env\Scripts\activate      # Windows
 
-# Install Python dependencies
 pip install -r ml_requirements.txt
 
-# Download NLTK data
+# Download NLTK VADER data (first time only)
 python -c "import nltk; nltk.download('vader_lexicon')"
 ```
 
----
+### 2. Configure Environment
 
-### 2️⃣ Environment Configuration
-
-#### Backend `.env` file
-
-Create `Stress Detection/backend/.env`:
-
-```env
-# Server
-PORT=4000
-NODE_ENV=development
-
-# MongoDB
-MONGO_URI=mongodb://127.0.0.1:27017/stress_detection_db
-
-# ML Microservice
-ML_SERVICE_URL=http://localhost:5000
-
-# JWT
-JWT_SECRET=your_jwt_secret_key_here
-
-# Email (Gmail)
-GMAIL_USER=your_email@gmail.com
-GMAIL_PASSWORD=your_app_password
-
-# Resend API (Optional)
-RESEND_API_KEY=your_resend_key
-```
-
----
-
-### 3️⃣ Start Services
-
-Open **4 terminals**:
-
-#### Terminal 1: MongoDB
-```bash
-mongod
-# Or if using Docker:
-docker run -d -p 27017:27017 --name mongodb mongo
-```
-
-#### Terminal 2: ML Microservice
-```bash
-cd Project
-python ml_service.py
-```
-
-Expected output:
-```
-======================================================================
-STRESS DETECTION ML MICROSERVICE
-======================================================================
-[ML Service] Loading tokenizer...
-[ML Service] Loading sequence config...
-[ML Service] Loading LSTM model...
-[ML Service] ✓ All models loaded successfully!
-
-[ML Service] Starting Flask server on http://localhost:5000
-[ML Service] Endpoints:
-  - GET  /health - Health check
-  - POST /predict - Single prediction
-  - POST /chat - Chat with LLM integration
-  - POST /batch-predict - Batch predictions
-```
-
-#### Terminal 3: Backend Server
 ```bash
 cd "Stress Detection/backend"
-npm install
+cp .env.example .env
+# Edit .env — fill in MONGO_URI (Atlas), GEMINI_API_KEY and/or NVIDIA_API_KEY
+```
+
+**Minimum required**:
+```env
+# MongoDB Atlas connection string (get from https://cloud.mongodb.com/)
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/stress_detection_db?retryWrites=true&w=majority
+JWT_SECRET=your_strong_secret_here
+GEMINI_API_KEY=AIza...    # Free key from https://aistudio.google.com/app/apikey
+```
+
+> **MongoDB Atlas Setup** (required before starting):
+> 1. Sign up at https://cloud.mongodb.com/ (free M0 tier)
+> 2. Create cluster → Security: add DB user → Network Access: add `0.0.0.0/0`
+> 3. Connect → Drivers → copy connection string → paste into `MONGO_URI` above
+
+### 3. Start Services
+
+**2 terminals** (MongoDB Atlas is cloud-hosted, no local terminal needed):
+
+**Terminal 1 — ML Microservice**:
+```bash
+cd ml_service
+python ml_service.py
+```
+Wait for: `[ML Service] ✓ DistilBERT model loaded successfully!`
+(First run downloads DistilBERT base model ~250 MB — needs internet)
+
+**Terminal 2 — Backend**:
+```bash
+cd "Stress Detection/backend"
 npm start
 ```
+Wait for: `✅ Connected to MongoDB Atlas` and `🚀 Server listening on http://localhost:4000`
 
-Expected output:
-```
-Server listening on http://localhost:4000
-Connected to MongoDB
-```
-
-#### Terminal 4: LM Studio (Optional - for advanced chatbot)
-```bash
-# Download and run LM Studio from: https://lmstudio.ai/
-lm-studio  # Then load "phi-3-mini" model
-```
-
-#### Terminal 5: Frontend (Development Server)
-```bash
-cd "Stress Detection/frontend"
-# If you have a local server like Live Server
-# Or simply open index.html in browser: file:///path/to/index.html
-```
+**Frontend**: Open `Stress Detection/frontend/index.html` in browser.
 
 ---
 
-## 📡 API Endpoints
+## 📡 Key API Endpoints
 
-### Authentication Endpoints
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login with email/password
-- `POST /auth/send-otp` - Send OTP for login
-- `POST /auth/verify-otp` - Verify OTP
+See `API_DOCUMENTATION.md` for complete reference.
 
-### Chat Endpoints (ML-Enhanced)
-
-#### 1. Create New Chat
-```http
-POST /chat/new
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "chatName": "My Stress Session"
-}
-
-Response:
-{
-  "chat": {
-    "_id": "...",
-    "chatName": "My Stress Session",
-    "messages": [],
-    "avgStress": 0,
-    "model": "hybrid"
-  }
-}
-```
-
-#### 2. Send Message with Stress Detection
-```http
-POST /chat/message
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "chatId": "...",
-  "text": "I'm feeling really anxious about my exam tomorrow"
-}
-
-Response:
-{
-  "chat": {...},
-  "mlMetrics": {
-    "stressLevel": 7.5,
-    "stressPercentage": 85.2,
-    "components": {
-      "lstm": 0.852,
-      "vader": 0.632,
-      "combined": 0.791,
-      "percentage": 85.2
-    }
-  }
-}
-```
-
-#### 3. Get Stress Prediction Only
-```http
-GET /chat/predict/{chatId}?text=I'm%20stressed
-Authorization: Bearer <token>
-
-Response:
-{
-  "stressLevel": 7.5,
-  "stressPercentage": 85.2,
-  "components": {
-    "lstm": 0.852,
-    "vader": 0.632,
-    "combined": 0.791
-  }
-}
-```
-
-#### 4. Batch Prediction
-```http
-POST /chat/batch-predict
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "texts": [
-    "I'm feeling great!",
-    "I'm so stressed",
-    "Everything is fine"
-  ]
-}
-
-Response:
-{
-  "count": 3,
-  "predictions": [
-    {"stress_level": 2.1, ...},
-    {"stress_level": 8.5, ...},
-    {"stress_level": 1.8, ...}
-  ]
-}
-```
-
-#### 5. Get All Chats
-```http
-GET /chat/all
-Authorization: Bearer <token>
-
-Response:
-{
-  "chats": [
-    {"_id": "...", "chatName": "...", "avgStress": 45, ...},
-    ...
-  ]
-}
-```
-
-#### 6. Update Chat Name
-```http
-PATCH /chat/{chatId}
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "chatName": "Updated Name"
-}
-```
-
-#### 7. Delete Chat
-```http
-DELETE /chat/{chatId}
-Authorization: Bearer <token>
-
-Response:
-{
-  "message": "Chat deleted successfully."
-}
-```
+| Method | Endpoint              | Description                          |
+|--------|-----------------------|--------------------------------------|
+| POST   | `/auth/signup`        | Register + send OTP email            |
+| POST   | `/auth/verify-signup-otp` | Verify OTP + complete registration |
+| POST   | `/auth/login`         | Login with email + password          |
+| POST   | `/chat/new`           | Create new chat session              |
+| POST   | `/chat/message`       | Send message → get stress + LLM response |
+| GET    | `/chat/all`           | List all user chats                  |
+| GET    | `/chat/analytics/:id` | Stress trend analytics               |
+| GET    | `/health`             | Backend health check                 |
+| GET    | `5000/health`         | ML Service health check              |
+| POST   | `5000/predict`        | Stress prediction only               |
 
 ---
 
-## 🧠 ML Model Details
+## 🧠 ML Model Details (v3.0)
 
-### LSTM Neural Network
-- **Architecture**: Embedding → LSTM(128) → LSTM(64) → Dense layers
-- **Input**: Text sequences (max 80 tokens)
-- **Output**: Binary classification (Stress: 0-1)
-- **Training**: 15 epochs with early stopping
-
-### VADER Sentiment Analysis
-- **Purpose**: Complementary stress detection using sentiment
-- **Range**: -1 (negative) to +1 (positive)
-- **Converted**: (1 - compound) / 2 → 0-1 stress scale
-
-### Hybrid Score Formula
+### DistilBERT Stress Classifier (75% weight)
 ```
-Stress Score = (0.75 × LSTM_Probability) + (0.25 × VADER_Stress)
-Stress Level = 1 + (Stress Score × 9)  → 1-10 scale
+Architecture: DistilBERT-base-uncased
+  → CLS token (index 0) → Dropout(0.3)
+  → Linear(768 → 256) → ReLU
+  → Linear(256 → 1) → Sigmoid
+  → bert_prob ∈ [0, 1]
+```
+
+### VADER Sentiment (25% weight)
+```python
+vader_stress = max(0.0, -compound)  # negative sentiment → stress
+# neutral/positive → 0 (not 0.5 — important fix from v2!)
+```
+
+### Hybrid Score
+```python
+stress_score = 0.75 × bert_prob + 0.25 × vader_stress
+stress_level = 1 + (stress_score × 9)   # → [1.0, 10.0]
+stress_pct   = bert_prob × 100           # → [0, 100]
 ```
 
 ---
@@ -360,181 +191,77 @@ Stress Level = 1 + (Stress Score × 9)  → 1-10 scale
 ## 🔄 Integration Points
 
 ### Frontend → Backend
-- Sends chat message to `/chat/message` endpoint
-- Receives stress level, bot response, and metrics
+- POST `/chat/message` with `{chatId, text}`
+- Receives `{chat, mlMetrics}` with stress score + bot response
 
 ### Backend → ML Microservice
-- Forwards user text to `/chat` endpoint (Flask)
-- Receives stress prediction + LLM response
+- POST `ML_SERVICE_URL/chat` with `{text: englishContextText}`
+- Returns `{stress_level, stress_percentage, components, bot_response}`
 
-### ML Microservice → External Services
-- **LM Studio**: Gets contextual responses (localhost:1234)
-- **NLTK**: Uses VADER for sentiment analysis
+### Backend → LLM APIs (in order)
+1. **Gemini 2.0 Flash**: `generativelanguage.googleapis.com` (set `GEMINI_API_KEY`)
+2. **NVIDIA NIM**: `integrate.api.nvidia.com` (set `NVIDIA_API_KEY`)
+3. **Offline**: `generateBotResponse()` in `utils/stressModel.js`
 
 ---
 
 ## 🐛 Troubleshooting
 
 ### ML Service Won't Start
-```
-Problem: "Models not found"
-Solution: Ensure these files exist in project root:
-  - tokenizer.pkl
-  - sequence_config.pkl
-  - model.pkl
+```bash
+# Check model files
+ls -lh ml_service/stress_model.pt ml_service/tokenizer.pkl
+# Both must exist!
+
+# Check Python deps
+pip install -r ml_service/ml_requirements.txt
 ```
 
-### Cannot Connect to ML Service
-```
-Problem: "ML Service unavailable"
-Solution:
-  1. Check if ML Service is running: http://localhost:5000/health
-  2. Verify ML_SERVICE_URL in .env matches Flask port
-  3. Check firewall settings allow localhost:5000
+### LLM Not Responding
+```bash
+# Add Gemini key (free!)
+# https://aistudio.google.com/app/apikey
+# Edit Stress Detection/backend/.env → GEMINI_API_KEY=AIza...
 ```
 
-### LM Studio Not Responding
+### MongoDB Atlas Connection Error
 ```
-Problem: "Cannot connect to LM Studio"
-Solution:
-  1. Download LM Studio: https://lmstudio.ai/
-  2. Load "phi-3-mini" model
-  3. Server should run on http://localhost:1234
-  4. Predictions will fallback gracefully if unavailable
+MongoServerSelectionError: connection to cluster0.xxxxx.mongodb.net failed
 ```
-
-### MongoDB Connection Failed
-```
-Problem: "MongoDB connection error"
-Solution:
-  1. Start MongoDB: mongod
-  2. Or use Docker: docker run -d -p 27017:27017 mongo
-  3. Verify MONGO_URI in .env
-```
+**Fix:**
+1. Verify `MONGO_URI` in `.env` is the Atlas `mongodb+srv://` format
+2. In Atlas → Network Access → add `0.0.0.0/0` (allow all IPs)
+3. Check username/password are correct (URL-encode special characters)
+4. If free cluster, check it isn't paused (Atlas pauses M0 after 60 days of inactivity)
 
 ---
 
-## 📊 Monitoring & Testing
+## 📊 Monitoring
 
-### Health Check ML Service
 ```bash
+# Backend health
+curl http://localhost:4000/health
+
+# ML Service health
 curl http://localhost:5000/health
-```
 
-### Test Stress Prediction
-```bash
-curl -X POST http://localhost:5000/predict \
-  -H "Content-Type: application/json" \
-  -d '{"text":"I am stressed and anxious"}'
-```
-
-### Test Chat Endpoint
-```bash
-curl -X POST http://localhost:5000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"text":"I am stressed and anxious"}'
+# Run full system health check
+cd ml_service
+pip install colorama
+python health_check.py
 ```
 
 ---
 
-## 🔐 Security Considerations
-
-1. **JWT Tokens**: All chat endpoints require authentication
-2. **CORS**: Configured to allow frontend requests
-3. **MongoDB**: Use authentication in production
-4. **ML Service**: Should be on private network in production
-5. **Environment Variables**: Never commit .env files
-
----
-
-## 📈 Performance Tips
-
-- **Batch Predictions**: Use `/batch-predict` for multiple texts
-- **Model Caching**: ML models are loaded once on startup
-- **Async Processing**: Consider Redis for high-load scenarios
-- **Model Optimization**: Can quantize LSTM for faster inference
-
----
-
-## 🚀 Deployment
-
-### Production Checklist
-- [ ] Set `NODE_ENV=production`
-- [ ] Use strong `JWT_SECRET`
-- [ ] Configure MongoDB Atlas
-- [ ] Deploy ML Service to separate container/server
-- [ ] Setup HTTPS/SSL certificates
-- [ ] Configure environment variables securely
-- [ ] Setup logging and monitoring
-- [ ] Enable rate limiting on API endpoints
-
-### Docker Deployment
-```dockerfile
-# Backend
-FROM node:18-alpine
-WORKDIR /app
-COPY package.json .
-RUN npm install
-COPY . .
-EXPOSE 4000
-CMD ["npm", "start"]
-
-# ML Service
-FROM python:3.10-slim
-WORKDIR /app
-COPY ml_requirements.txt .
-RUN pip install -r ml_requirements.txt
-COPY ml_service.py .
-EXPOSE 5000
-CMD ["python", "ml_service.py"]
-```
-
----
-
-## 📚 Model Training (Advanced)
-
-To retrain the LSTM model with new data:
-
-1. Update `final_stress_dataset.csv` with new labeled data
-2. Run `LSTM_Training.ipynb`
-3. This generates: `tokenizer.pkl`, `sequence_config.pkl`, `model.pkl`
-4. Restart ML Service to reload models
-
----
-
-## 🔗 Quick Start Summary
+## 🐳 Docker (Production)
 
 ```bash
-# 1. Install dependencies
-cd "Stress Detection\backend" && npm install
-pip install -r ml_requirements.txt
-
-# 2. Start MongoDB
-mongod
-
-# 3. Start ML Service (Python)
-python ml_service.py
-
-# 4. Start Backend (Node.js)
-cd "Stress Detection\backend" && npm start
-
-# 5. Open Frontend
-# Open index.html in browser or setup dev server
-
-# 6. (Optional) Start LM Studio
-# Download from https://lmstudio.ai/
+# Ensure model files exist in ml_service/ first
+docker-compose up --build
+# Access at http://localhost
 ```
 
 ---
 
-## 📞 Support & Documentation
-
-- **LSTM Training**: See [LSTM_Training.ipynb](LSTM_Training.ipynb)
-- **LLM Integration**: See [LLM_Integration.ipynb](LLM_Integration.ipynb)
-- **ML Service**: See [ml_service.py](ml_service.py) docstrings
-- **Backend Routes**: See [chat_integrated.js](Stress%20Detection/backend/routes/chat_integrated.js)
-
----
-
-**Last Updated**: April 2024  
-**Version**: 1.0 - Full Stack Integration Complete
+**Last Updated**: June 2026
+**Version**: 3.0 — DistilBERT + Gemini/NVIDIA (replaces LSTM + LM Studio)

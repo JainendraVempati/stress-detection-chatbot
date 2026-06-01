@@ -1,6 +1,9 @@
 """
 Health Check Script for Stress Detection System
 Tests all services and endpoints
+
+Model: DistilBERT fine-tuned + VADER hybrid
+LLM:   Gemini 2.0 Flash (primary) → NVIDIA NIM (fallback)
 """
 
 import requests
@@ -63,14 +66,16 @@ def main():
     all_passed &= success
     
     # Test 2: ML Service Health
-    print_header("2. Testing ML Microservice")
+    print_header("2. Testing ML Microservice (DistilBERT + VADER)")
     success, data = test_endpoint("GET", f"{ML_URL}/health")
     if success and data:
         print_info(f"Models Loaded: {data.get('models_loaded', False)}")
+        print_info(f"Model Type: {data.get('model_type', 'N/A')}")
+        print_info(f"Device: {data.get('device', 'N/A')}")
     all_passed &= success
     
     # Test 3: ML Prediction
-    print_header("3. Testing ML Prediction")
+    print_header("3. Testing ML Prediction (DistilBERT + VADER hybrid)")
     test_text = "I am feeling very stressed and overwhelmed with work"
     success, data = test_endpoint(
         "POST", 
@@ -81,12 +86,13 @@ def main():
         stress_data = data.get('data', {})
         print_info(f"Stress Level: {stress_data.get('stress_level', 'N/A')}/10")
         print_info(f"Stress Percentage: {stress_data.get('stress_percentage', 'N/A')}%")
-        print_info(f"LSTM Score: {stress_data.get('lstm_score', 'N/A')}")
+        print_info(f"DistilBERT Score: {stress_data.get('bert_score', 'N/A')}")
         print_info(f"VADER Score: {stress_data.get('vader_score', 'N/A')}")
+        print_info(f"Combined Score: {stress_data.get('combined_score', 'N/A')}")
     all_passed &= success
     
     # Test 4: ML Chat with LLM
-    print_header("4. Testing ML Chat (with LLM Response)")
+    print_header("4. Testing ML Chat (Stress Prediction + NVIDIA NIM Response)")
     success, data = test_endpoint(
         "POST",
         f"{ML_URL}/chat",
@@ -94,7 +100,8 @@ def main():
     )
     if success and data:
         print_info(f"Stress Level: {data.get('stress_level', 'N/A')}/10")
-        print_info(f"Bot Response: {data.get('bot_response', 'N/A')[:100]}...")
+        bot_resp = data.get('bot_response', 'N/A')
+        print_info(f"Bot Response: {str(bot_resp)[:100]}...")
     all_passed &= success
     
     # Test 5: Backend Auth (Signup)
@@ -114,7 +121,7 @@ def main():
     if success and data:
         print_info(f"Message: {data.get('message', 'N/A')}")
         if data.get('debug') and data.get('otp'):
-            print_info(f"OTP (Debug Mode): {data.get('otp')}")
+            print_info(f"OTP (Debug Mode — email not configured): {data.get('otp')}")
     all_passed &= success
     
     # Test 6: Batch Prediction
@@ -144,9 +151,10 @@ def main():
         print_error("Some tests failed. Check the output above for details.")
         print_info("Make sure all services are running:")
         print_info("  - MongoDB: mongod")
-        print_info("  - ML Service: python ml_service.py")
-        print_info("  - Backend: cd backend && npm start")
-        print_info("  - LM Studio: Running on port 1234")
+        print_info("  - ML Service: python ml_service.py  (wait for DistilBERT to load)")
+        print_info("  - Backend: cd 'Stress Detection/backend' && npm start")
+        print_info("  - LLM: set GEMINI_API_KEY in backend/.env (free key)")
+        print_info("  - LLM Fallback: set NVIDIA_API_KEY in backend/.env")
     
     print()
     return 0 if all_passed else 1
