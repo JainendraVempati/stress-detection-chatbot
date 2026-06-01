@@ -84,6 +84,46 @@ def setup_nvidia():
     else:
         print("[NVIDIA NIM] WARNING: NVIDIA_API_KEY not set. LLM responses will use fallback.")
 
+
+# ============================================================
+# Download model from URL if not present locally
+# (Used on Render — stress_model.pt is too large for GitHub)
+# ============================================================
+def download_model_if_needed():
+    model_pt = MODEL_DIR / "stress_model.pt"
+    if model_pt.exists() and model_pt.stat().st_size > 1_000_000:
+        print(f"[ML Service] stress_model.pt already present ({model_pt.stat().st_size // 1_000_000}MB), skipping download.")
+        return True
+
+    model_url = os.environ.get("MODEL_DOWNLOAD_URL", "")
+    if not model_url:
+        print("[ERROR] stress_model.pt not found and MODEL_DOWNLOAD_URL env var is not set.")
+        print("        Set MODEL_DOWNLOAD_URL to a direct download link for stress_model.pt")
+        return False
+
+    print(f"[ML Service] Downloading stress_model.pt from MODEL_DOWNLOAD_URL ...")
+    print(f"             This may take several minutes (file is ~254MB)...")
+    try:
+        with requests.get(model_url, stream=True, timeout=600) as r:
+            r.raise_for_status()
+            total = int(r.headers.get('content-length', 0))
+            downloaded = 0
+            with open(model_pt, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8 * 1024 * 1024):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total:
+                        pct = downloaded / total * 100
+                        print(f"             ... {pct:.0f}% ({downloaded // 1_000_000}MB / {total // 1_000_000}MB)", flush=True)
+        size_mb = model_pt.stat().st_size // 1_000_000
+        print(f"[ML Service] ✅ Downloaded stress_model.pt ({size_mb}MB)")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to download stress_model.pt: {e}")
+        if model_pt.exists():
+            model_pt.unlink()
+        return False
+
 # ============================================================
 # Load DistilBERT Model + Tokenizer
 # ============================================================
@@ -91,6 +131,12 @@ def load_models():
     global tokenizer, model, models_loaded
 
     try:
+        # --- Download stress_model.pt if needed (Render deployment) ---
+        if not download_model_if_needed():
+            print("[ERROR] Failed to start service - models not loaded")
+            print("        Set MODEL_DOWNLOAD_URL env var to a direct download link for stress_model.pt")
+            return False
+
         # --- Load DistilBERT Tokenizer ---
         print("[ML Service] Loading DistilBERT tokenizer...")
         tokenizer_path = MODEL_DIR / "tokenizer.pkl"
@@ -111,8 +157,7 @@ def load_models():
         model_pt = MODEL_DIR / "stress_model.pt"
 
         if not model_pt.exists():
-            print(f"[ERROR] stress_model.pt not found at {model_pt}")
-            print("[ERROR] Expected a single file 'stress_model.pt' — not a folder")
+            print(f"[ERROR] stress_model.pt not found at {model_pt} (download may have failed)")
             return False
 
         # Build architecture matching the saved weights exactly
